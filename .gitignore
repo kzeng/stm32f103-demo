@@ -1,0 +1,32 @@
+# STM32 / embedded build output
+build/
+Debug/
+Release/
+*.o
+*.d
+*.lst
+*.map
+*.elf
+*.hex
+*.bin
+*.out
+
+# STM32CubeIDE / Eclipse machine-specific metadata
+.metadata/
+.settings/
+*.launch
+.cproject
+.project
+
+# Local toolchain and debugger paths
+.stm32env
+.vscode/
+
+# Temporary diagnostics and logs
+*.log
+*.tmp
+
+# Host-specific files
+.DS_Store
+Thumbs.db
+*~

@@ -1,0 +1,37 @@
+TARGET = stm32f103-blink
+BUILD_DIR = build/blink
+GCC_PATH ?=
+PREFIX = arm-none-eabi-
+CC = $(if $(GCC_PATH),$(GCC_PATH)/,)$(PREFIX)gcc
+OBJCOPY = $(if $(GCC_PATH),$(GCC_PATH)/,)$(PREFIX)objcopy
+SIZE = $(if $(GCC_PATH),$(GCC_PATH)/,)$(PREFIX)size
+
+CFLAGS = -mcpu=cortex-m3 -mthumb -DSTM32F103xB \
+  -IDrivers/CMSIS/Device/ST/STM32F1xx/Include -IDrivers/CMSIS/Include \
+  -Os -Wall -ffunction-sections -fdata-sections
+LDFLAGS = -mcpu=cortex-m3 -mthumb -TSTM32F103C8TX_FLASH.ld \
+  -Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/$(TARGET).map -nostartfiles
+
+all: $(BUILD_DIR)/$(TARGET).bin
+
+$(BUILD_DIR):
+	mkdir -p $@
+
+$(BUILD_DIR)/blink_main.o: diagnostics/blink_main.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/system.o: Core/Src/system_stm32f1xx.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/startup.o: startup_stm32f103c8tx.s | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
+
+$(BUILD_DIR)/$(TARGET).elf: $(BUILD_DIR)/blink_main.o $(BUILD_DIR)/system.o $(BUILD_DIR)/startup.o
+	$(CC) $^ $(LDFLAGS) -o $@
+	$(SIZE) $@
+
+$(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
+	$(OBJCOPY) -O binary -S $< $@
+
+clean:
+	rm -rf $(BUILD_DIR)
