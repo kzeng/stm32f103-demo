@@ -60,6 +60,15 @@ void Error_Handler(void);
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
 
+typedef enum {
+  LED_MODE_OFF = 0,
+  LED_MODE_ON,
+  LED_MODE_BLINK
+} LedMode;
+
+void LED_SetMode(LedMode mode);
+LedMode LED_GetMode(void);
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

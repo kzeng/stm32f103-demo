@@ -86,6 +86,7 @@ const osThreadAttr_t shellTask_attributes = {
 void SystemClock_Config(void);
 static HAL_StatusTypeDef SystemClock_Config_HSI_Fallback(void);
 static void LED_Output_Init(void);
+static volatile LedMode led_mode = LED_MODE_BLINK;
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
@@ -155,6 +156,8 @@ int main(void)
   /* PC13 is the physical Blue Pill LED.  Keep it owned by the heartbeat and
      prevent a persisted shell setting from leaving it as an input. */
   LED_Output_Init();
+  /* Re-apply the persisted LED mode after the GPIO initialization default. */
+  LED_SetMode(LED_GetMode());
   g_boot_stage = 4U;
 
   /* USER CODE END 2 */
@@ -303,6 +306,21 @@ static void LED_Output_Init(void)
   led.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &led);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+}
+
+void LED_SetMode(LedMode mode)
+{
+  led_mode = mode;
+  if (mode == LED_MODE_ON) {
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  } else if (mode == LED_MODE_OFF) {
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+  }
+}
+
+LedMode LED_GetMode(void)
+{
+  return led_mode;
 }
 
 /**
@@ -467,8 +485,14 @@ void StartDefaultTask(void *argument)
   g_boot_stage = 7U;
   for(;;)
   {
-    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    osDelay(500);
+    LedMode mode = LED_GetMode();
+    if (mode == LED_MODE_BLINK) {
+      HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+      osDelay(500);
+    } else {
+      LED_SetMode(mode);
+      osDelay(100);
+    }
   }
 }
 

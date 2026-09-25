@@ -1,0 +1,9 @@
+#ifndef APP_VERSION_H
+#define APP_VERSION_H
+
+#define APP_VERSION_MAJOR 0U
+#define APP_VERSION_MINOR 0U
+#define APP_VERSION_PATCH 1U
+#define APP_VERSION_STRING "0.0.1"
+
+#endif /* APP_VERSION_H */

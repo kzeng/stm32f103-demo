@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "main.h"
+#include "app_version.h"
 #include "config_store.h"
 #include "cmsis_os.h"
 #include "usb_device.h"
@@ -169,6 +170,15 @@ static void trim_line(char *line)
   }
 }
 
+static LedMode config_led_mode(void)
+{
+  if (app_config.led_mode <= CONFIG_LED_MODE_BLINK) {
+    return (LedMode)app_config.led_mode;
+  }
+  app_config.led_mode = CONFIG_LED_MODE_BLINK;
+  return LED_MODE_BLINK;
+}
+
 static void apply_pin_config(const ShellPin *pin)
 {
   const ConfigPinState *state = &app_config.pins[pin->config_index];
@@ -220,8 +230,9 @@ static void command_help(void)
 {
   shell_write("Commands:\r\n");
   shell_write("  help\r\n");
+  shell_write("  version [info]\r\n");
   shell_write("  status\r\n");
-  shell_write("  led on|off|toggle|status\r\n");
+  shell_write("  led on|off|blink|toggle|status\r\n");
   shell_write("  gpio mode <PA0|PA1|PA2|PB0|PB1|PC13> <input|output|pullup|pulldown>\r\n");
   shell_write("  gpio write <pin> <0|1>\r\n");
   shell_write("  gpio read <pin>\r\n");
@@ -229,6 +240,11 @@ static void command_help(void)
   shell_write("  config save|load|reset\r\n");
   shell_write("  disconnect  USB detach and re-enumerate\r\n");
   shell_write("  exit        close shell session\r\n");
+}
+
+static void command_version(void)
+{
+  shell_write("STM32F103 console version " APP_VERSION_STRING "\r\n");
 }
 
 static void command_gpio(char **argv, int argc)
@@ -248,7 +264,7 @@ static void command_gpio(char **argv, int argc)
   if (pin->port == LED_GPIO_Port && pin->pin == LED_Pin &&
       strcasecmp(argv[1], "mode") == 0 && argc >= 4 &&
       strcasecmp(argv[3], "output") != 0) {
-    shell_write("ERR: PC13 is reserved for LED; use led on|off|toggle\r\n");
+    shell_write("ERR: PC13 is reserved for LED; use led on|off|blink|toggle\r\n");
     return;
   }
 
@@ -285,21 +301,42 @@ static void command_gpio(char **argv, int argc)
 static void command_led(const char *action)
 {
   GPIO_PinState state = HAL_GPIO_ReadPin(LED_GPIO_Port, LED_Pin);
+  LedMode mode = LED_GetMode();
 
-  if (strcasecmp(action, "on") == 0) state = GPIO_PIN_RESET;
-  else if (strcasecmp(action, "off") == 0) state = GPIO_PIN_SET;
-  else if (strcasecmp(action, "toggle") == 0) state = (state == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET;
+  if (strcasecmp(action, "on") == 0) {
+    mode = LED_MODE_ON;
+    state = GPIO_PIN_RESET;
+  } else if (strcasecmp(action, "off") == 0) {
+    mode = LED_MODE_OFF;
+    state = GPIO_PIN_SET;
+  } else if (strcasecmp(action, "blink") == 0) {
+    app_config.led_mode = CONFIG_LED_MODE_BLINK;
+    LED_SetMode(LED_MODE_BLINK);
+    shell_write("LED=blink\r\n");
+    return;
+  } else if (strcasecmp(action, "toggle") == 0) {
+    mode = (mode == LED_MODE_ON) ? LED_MODE_OFF : LED_MODE_ON;
+    state = (mode == LED_MODE_ON) ? GPIO_PIN_RESET : GPIO_PIN_SET;
+  }
   else if (strcasecmp(action, "status") != 0) {
-    shell_write("ERR: led on|off|toggle|status\r\n");
+    shell_write("ERR: led on|off|blink|toggle|status\r\n");
     return;
   }
 
   if (strcasecmp(action, "status") != 0) {
-    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, state);
+    app_config.led_mode = (uint8_t)mode;
+    LED_SetMode(mode);
     app_config.pins[5].mode = 1U;
     app_config.pins[5].level = (state == GPIO_PIN_SET) ? 1U : 0U;
+    shell_write((mode == LED_MODE_ON) ? "LED=on\r\n" : "LED=off\r\n");
+    return;
   }
-  shell_write((state == GPIO_PIN_SET) ? "LED=off\r\n" : "LED=on\r\n");
+
+  if (mode == LED_MODE_BLINK) {
+    shell_write("LED=blink\r\n");
+  } else {
+    shell_write((state == GPIO_PIN_SET) ? "LED=off\r\n" : "LED=on\r\n");
+  }
 }
 
 static void command_adc(const char *pin_name)
@@ -341,8 +378,10 @@ static void command_config(const char *action)
   if (strcasecmp(action, "save") == 0) {
     shell_write(ConfigStore_Save(&app_config) == HAL_OK ? "OK: saved\r\n" : "ERR: save failed\r\n");
   } else if (strcasecmp(action, "load") == 0) {
-    if (ConfigStore_Load(&app_config) == HAL_OK) {
-      for (size_t i = 0; i < sizeof(shell_pins) / sizeof(shell_pins[0]); ++i) apply_pin_config(&shell_pins[i]);
+    HAL_StatusTypeDef status = ConfigStore_Load(&app_config);
+    for (size_t i = 0; i < sizeof(shell_pins) / sizeof(shell_pins[0]); ++i) apply_pin_config(&shell_pins[i]);
+    LED_SetMode(config_led_mode());
+    if (status == HAL_OK) {
       shell_write("OK: loaded\r\n");
     } else {
       shell_write("OK: defaults (no valid config)\r\n");
@@ -350,6 +389,7 @@ static void command_config(const char *action)
   } else if (strcasecmp(action, "reset") == 0) {
     ConfigStore_LoadDefaults(&app_config);
     for (size_t i = 0; i < sizeof(shell_pins) / sizeof(shell_pins[0]); ++i) apply_pin_config(&shell_pins[i]);
+    LED_SetMode(config_led_mode());
     shell_write("OK: defaults\r\n");
   } else {
     shell_write("ERR: config save|load|reset\r\n");
@@ -369,7 +409,9 @@ static uint8_t execute_line(char *line)
   if (argc == 0) return 1U;
 
   if (strcasecmp(argv[0], "help") == 0) command_help();
-  else if (strcasecmp(argv[0], "status") == 0) shell_write("OK: stm32f103c8t6 HAL+FreeRTOS USB-CDC\r\n");
+  else if (strcasecmp(argv[0], "version") == 0 &&
+           (argc == 1 || (argc == 2 && strcasecmp(argv[1], "info") == 0))) command_version();
+  else if (strcasecmp(argv[0], "status") == 0) shell_write("OK: stm32f103c8t6 HAL+FreeRTOS USB-CDC version=" APP_VERSION_STRING "\r\n");
   else if (strcasecmp(argv[0], "led") == 0 && argc >= 2) command_led(argv[1]);
   else if (strcasecmp(argv[0], "gpio") == 0) command_gpio(argv, argc);
   else if (strcasecmp(argv[0], "adc") == 0 && argc >= 3 && strcasecmp(argv[1], "read") == 0) command_adc(argv[2]);
@@ -396,6 +438,7 @@ void Shell_Init(void)
                                             shell_stream_storage, &shell_stream_struct);
   ConfigStore_Load(&app_config);
   for (size_t i = 0; i < sizeof(shell_pins) / sizeof(shell_pins[0]); ++i) apply_pin_config(&shell_pins[i]);
+  LED_SetMode(config_led_mode());
   shell_history_count = 0U;
   shell_history_cursor = 0U;
   shell_history_draft[0] = '\0';

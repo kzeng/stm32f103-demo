@@ -25,6 +25,7 @@ void ConfigStore_LoadDefaults(AppConfig *config)
   /* PC13 is the onboard LED and is active-low on the usual Blue Pill. */
   config->pins[5].mode = 1U;
   config->pins[5].level = 1U;
+  config->led_mode = CONFIG_LED_MODE_BLINK;
 }
 
 HAL_StatusTypeDef ConfigStore_Load(AppConfig *config)

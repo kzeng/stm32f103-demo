@@ -22,7 +22,11 @@ Use ST-Link V2 over SWD for download/debug. The Blue Pill Micro USB enumerates a
 
 ```text
 help
+version
+version info
 led on
+led off
+led blink
 gpio mode PA1 input
 gpio read PA1
 adc read PA0
@@ -35,10 +39,16 @@ disconnect
 exit
 ```
 
+`config save` also persists the LED mode selected by `led on`, `led off`, or
+`led blink`. The saved mode is restored after reset or power cycling.
+
 The shell keeps the last eight non-empty commands. ANSI terminal Up/Down
 arrows browse history; `exit` closes the current shell session and the next
 input reopens it. `disconnect` forces a USB detach/reattach cycle, after which
 the welcome banner and `stm32> ` prompt are emitted again.
+
+The initial firmware version is `0.0.1`. The `version` and `version info`
+commands report it, and `status` includes the same version.
 
 The current implementation intentionally has no DAC or PWM command.
 
