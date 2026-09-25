@@ -24,6 +24,7 @@ Use ST-Link V2 over SWD for download/debug. The Blue Pill Micro USB enumerates a
 help
 version
 version info
+rtos
 led on
 led off
 led blink
@@ -47,8 +48,12 @@ arrows browse history; `exit` closes the current shell session and the next
 input reopens it. `disconnect` forces a USB detach/reattach cycle, after which
 the welcome banner and `stm32> ` prompt are emitted again.
 
-The initial firmware version is `0.0.1`. The `version` and `version info`
+The current firmware version is `0.0.2`. The `version` and `version info`
 commands report it, and `status` includes the same version.
+
+`rtos` reports the current and minimum-ever FreeRTOS heap, task count, task
+state, priority, and minimum remaining task stack in words. `rtos status` and
+`rtos tasks` are aliases.
 
 The current implementation intentionally has no DAC or PWM command.
 

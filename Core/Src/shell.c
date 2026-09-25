@@ -5,6 +5,8 @@
 #include "cmsis_os.h"
 #include "usb_device.h"
 #include "FreeRTOS.h"
+#include "portable.h"
+#include "task.h"
 #include "stream_buffer.h"
 #include "usbd_cdc_if.h"
 #include <ctype.h>
@@ -16,6 +18,7 @@
 #define SHELL_RX_BUFFER_SIZE 256U
 #define SHELL_LINE_SIZE 128U
 #define SHELL_HISTORY_COUNT 8U
+#define SHELL_RTOS_TASK_LIMIT 8U
 
 typedef struct {
   const char *name;
@@ -42,6 +45,7 @@ static char shell_history[SHELL_HISTORY_COUNT][SHELL_LINE_SIZE];
 static char shell_history_draft[SHELL_LINE_SIZE];
 static size_t shell_history_count;
 static size_t shell_history_cursor;
+static TaskStatus_t shell_rtos_tasks[SHELL_RTOS_TASK_LIMIT];
 
 extern ADC_HandleTypeDef hadc1;
 extern volatile uint32_t g_usb_stage;
@@ -232,6 +236,7 @@ static void command_help(void)
   shell_write("  help\r\n");
   shell_write("  version [info]\r\n");
   shell_write("  status\r\n");
+  shell_write("  rtos [status|tasks]\r\n");
   shell_write("  led on|off|blink|toggle|status\r\n");
   shell_write("  gpio mode <PA0|PA1|PA2|PB0|PB1|PC13> <input|output|pullup|pulldown>\r\n");
   shell_write("  gpio write <pin> <0|1>\r\n");
@@ -245,6 +250,55 @@ static void command_help(void)
 static void command_version(void)
 {
   shell_write("STM32F103 console version " APP_VERSION_STRING "\r\n");
+}
+
+static const char *rtos_state_name(eTaskState state)
+{
+  switch (state) {
+    case eRunning: return "running";
+    case eReady: return "ready";
+    case eBlocked: return "blocked";
+    case eSuspended: return "suspend";
+    case eDeleted: return "deleted";
+    default: return "invalid";
+  }
+}
+
+static void command_rtos(void)
+{
+  char response[128];
+  size_t heap_free = xPortGetFreeHeapSize();
+  size_t heap_min = xPortGetMinimumEverFreeHeapSize();
+  UBaseType_t total_tasks = uxTaskGetNumberOfTasks();
+  UBaseType_t task_count = uxTaskGetSystemState(shell_rtos_tasks,
+                                                 SHELL_RTOS_TASK_LIMIT,
+                                                 NULL);
+
+  if (heap_free == 0U && heap_min == 0U) {
+    snprintf(response, sizeof(response),
+             "RTOS heap free=uninit total=%lu min=uninit tasks=%lu/%lu\r\n",
+             (unsigned long)configTOTAL_HEAP_SIZE,
+             (unsigned long)task_count,
+             (unsigned long)total_tasks);
+  } else {
+    snprintf(response, sizeof(response),
+             "RTOS heap free=%lu total=%lu min=%lu tasks=%lu/%lu\r\n",
+             (unsigned long)heap_free,
+             (unsigned long)configTOTAL_HEAP_SIZE,
+             (unsigned long)heap_min,
+             (unsigned long)task_count,
+             (unsigned long)total_tasks);
+  }
+  shell_write(response);
+  shell_write("name state priority stack_min(words)\r\n");
+  for (UBaseType_t i = 0; i < task_count; ++i) {
+    snprintf(response, sizeof(response), "%s %s %lu %lu\r\n",
+             shell_rtos_tasks[i].pcTaskName,
+             rtos_state_name(shell_rtos_tasks[i].eCurrentState),
+             (unsigned long)shell_rtos_tasks[i].uxCurrentPriority,
+             (unsigned long)shell_rtos_tasks[i].usStackHighWaterMark);
+    shell_write(response);
+  }
 }
 
 static void command_gpio(char **argv, int argc)
@@ -412,6 +466,10 @@ static uint8_t execute_line(char *line)
   else if (strcasecmp(argv[0], "version") == 0 &&
            (argc == 1 || (argc == 2 && strcasecmp(argv[1], "info") == 0))) command_version();
   else if (strcasecmp(argv[0], "status") == 0) shell_write("OK: stm32f103c8t6 HAL+FreeRTOS USB-CDC version=" APP_VERSION_STRING "\r\n");
+  else if (strcasecmp(argv[0], "rtos") == 0 &&
+           (argc == 1 || (argc == 2 &&
+                          (strcasecmp(argv[1], "status") == 0 ||
+                           strcasecmp(argv[1], "tasks") == 0)))) command_rtos();
   else if (strcasecmp(argv[0], "led") == 0 && argc >= 2) command_led(argv[1]);
   else if (strcasecmp(argv[0], "gpio") == 0) command_gpio(argv, argc);
   else if (strcasecmp(argv[0], "adc") == 0 && argc >= 3 && strcasecmp(argv[1], "read") == 0) command_adc(argv[2]);
