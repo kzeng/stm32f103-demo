@@ -49,6 +49,7 @@
 /* Ensure definitions are only used by the compiler, and not by the assembler. */
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
   #include <stdint.h>
+  #include "stm32f1xx.h"
   extern uint32_t SystemCoreClock;
   void xPortSysTickHandler(void);
 #endif
@@ -109,12 +110,12 @@ to exclude the API function. */
 
 /* Cortex-M specific definitions.
  *
- * The connected Blue Pill MCU reports three implemented NVIC priority bits
- * when FreeRTOS probes the priority register (writing 0xff reads back 0xe0).
- * Do not use the CMSIS header's nominal four-bit value here: FreeRTOS would
- * stop in its startup assertion before the first task is scheduled.
- */
+ * Blue Pill boards in this project have been observed with both three and
+ * four implemented NVIC priority bits.  Use a conservative three-bit
+ * priority encoding.  The FreeRTOS port probes the actual priority register
+ * at startup and masks the syscall threshold to the implemented bits. */
 #define configPRIO_BITS         3
+#define configALLOW_MISMATCHED_NVIC_PRIO_BITS 1
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
 function. */

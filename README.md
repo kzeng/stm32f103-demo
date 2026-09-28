@@ -48,7 +48,7 @@ arrows browse history; `exit` closes the current shell session and the next
 input reopens it. `disconnect` forces a USB detach/reattach cycle, after which
 the welcome banner and `stm32> ` prompt are emitted again.
 
-The current firmware version is `0.0.2`. The `version` and `version info`
+The current firmware version is `0.0.3`. The `version` and `version info`
 commands report it, and `status` includes the same version.
 
 `rtos` reports the current and minimum-ever FreeRTOS heap, task count, task

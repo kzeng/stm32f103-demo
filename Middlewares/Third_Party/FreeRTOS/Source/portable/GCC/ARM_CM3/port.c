@@ -293,6 +293,7 @@ BaseType_t xPortStartScheduler( void )
 			ucMaxPriorityValue <<= ( uint8_t ) 0x01;
 		}
 
+		#ifndef configALLOW_MISMATCHED_NVIC_PRIO_BITS
 		#ifdef __NVIC_PRIO_BITS
 		{
 			/* Check the CMSIS configuration that defines the number of
@@ -310,6 +311,7 @@ BaseType_t xPortStartScheduler( void )
 			configASSERT( ( portMAX_PRIGROUP_BITS - ulMaxPRIGROUPValue ) == configPRIO_BITS );
 		}
 		#endif
+		#endif /* configALLOW_MISMATCHED_NVIC_PRIO_BITS */
 
 		/* Shift the priority group value back to its position within the AIRCR
 		register. */
@@ -694,7 +696,6 @@ __attribute__(( weak )) void vPortSetupTimerInterrupt( void )
 	}
 
 #endif /* configASSERT_DEFINED */
-
 
 
 
