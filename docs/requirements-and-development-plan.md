@@ -201,7 +201,7 @@ STM32 HAL + FreeRTOS
 - 电脑能识别 USB CDC，终端能看到提示符并连续执行命令。
 - `led`、`gpio`、`adc`、`config` 命令在正常输入和错误输入下均有可理解的返回。
 - LED 的 `on`、`off`、`blink` 模式可通过 `config save` 持久化，并在复位或掉电重启后恢复。
-- Shell 提供 `version` / `version info` 命令，当前固件版本为 `0.0.3`，并采用 `x.y.z` 格式。
+- Shell 的 `status` 输出固件版本，当前版本为 `0.0.3`，并采用 `x.y.z` 格式。
 - Shell 提供 `rtos` 资源监视命令，显示 FreeRTOS Heap、任务状态、优先级和任务栈余量。
 - USB 重新插拔或 MCU 复位后能恢复 Shell，不需要重新烧录。
 - 不允许 Shell 改写 USB、SWD 或其他受保护引脚。

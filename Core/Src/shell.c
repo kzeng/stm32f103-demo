@@ -234,7 +234,6 @@ static void command_help(void)
 {
   shell_write("Commands:\r\n");
   shell_write("  help\r\n");
-  shell_write("  version [info]\r\n");
   shell_write("  status\r\n");
   shell_write("  rtos [status|tasks]\r\n");
   shell_write("  led on|off|blink|toggle|status\r\n");
@@ -245,11 +244,6 @@ static void command_help(void)
   shell_write("  config save|load|reset\r\n");
   shell_write("  disconnect  USB detach and re-enumerate\r\n");
   shell_write("  exit        close shell session\r\n");
-}
-
-static void command_version(void)
-{
-  shell_write("STM32F103 console version " APP_VERSION_STRING "\r\n");
 }
 
 static const char *rtos_state_name(eTaskState state)
@@ -463,8 +457,6 @@ static uint8_t execute_line(char *line)
   if (argc == 0) return 1U;
 
   if (strcasecmp(argv[0], "help") == 0) command_help();
-  else if (strcasecmp(argv[0], "version") == 0 &&
-           (argc == 1 || (argc == 2 && strcasecmp(argv[1], "info") == 0))) command_version();
   else if (strcasecmp(argv[0], "status") == 0) shell_write("OK: stm32f103c8t6 HAL+FreeRTOS USB-CDC version=" APP_VERSION_STRING "\r\n");
   else if (strcasecmp(argv[0], "rtos") == 0 &&
            (argc == 1 || (argc == 2 &&
